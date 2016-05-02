@@ -1,0 +1,59 @@
+section {
+  border-style: solid;
+  border-width: 2px;
+  border-color: black;
+  clear: both;
+  overflow: hidden;
+  margin: 5px;
+  display: inline-block
+}
+
+.section_header {
+  border-style: solid;
+  border-width: 0px 2px 2px 0px;
+  border-color: black;
+  padding: 3px;
+  display: inline-block
+}
+
+.section_body {
+  padding: 0.3em;
+}
+
+.subsection {
+  border-style: solid;
+  border-width: 1px;
+  border-color: black;
+  float: left;
+  margin: 5px;
+}
+
+.subsection_header {
+  border-style: solid;
+  border-width: 0px 1px 1px 0px;
+  border-color: black;
+  padding: 3px;
+  display: inline-block
+}
+
+.subsection_body {
+  padding: 0.3em;
+}
+
+.number_field {
+  width: 3.5em;
+}
+
+body, table, input, select {
+  font-family: monospace;
+  font-size: 12pt;
+}
+
+label {
+  font-weight:normal;
+  margin-bottom: 0px;
+}
+
+td {
+  padding: 2px;
+}
