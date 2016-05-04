@@ -39,6 +39,7 @@ mkYesodData "App" $(parseRoutesFile "config/routes")
 
 -- | A convenient synonym for creating forms.
 type Form x = Markup -> MForm (HandlerT App IO) (FormResult x, Widget)
+type PartialForm x = MForm (HandlerT App IO) (FormResult x, Widget)
 
 -- Please see the documentation for the Yesod typeclass. There are a number
 -- of settings which can be configured by overriding methods here.

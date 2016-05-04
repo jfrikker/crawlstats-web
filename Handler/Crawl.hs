@@ -1,12 +1,12 @@
 {-# OPTIONS_GHC -fno-warn-unused-binds -fno-warn-name-shadowing -fno-warn-unused-matches #-}
-{-# LANGUAGE TemplateHaskell #-}
 
 module Handler.Crawl where
 
 import Import
 
-import Crawl.Stats.Player (Player (Player))
+import Crawl.Stats.Player (Player(Player))
 import qualified Crawl.Stats.Player as Player
+import Crawl.Stats.Monster (Monster)
 import Crawl.Stats.Data (CrawlData)
 import qualified Crawl.Stats.Data as CrawlData
 import Crawl.Stats.Named (Named)
@@ -30,8 +30,8 @@ selectDataField f = do
   let namedList = f $ crawlData app
   return $ selectFieldList [(Text.pack $ Named.name x, x) | x <- namedList]
 
-playerForm :: Player -> Form Player
-playerForm defPlayer extra = do
+playerForm :: Player -> PartialForm Player
+playerForm defPlayer = do
   -- Basics
   (hpRes, hpView) <- mreq intField (boundedSettings 1 999 "HP") (Just $ Player.hp defPlayer)
   (evRes, evView) <- mreq intField (boundedSettings 1 999 "EV") (Just $ Player.ev defPlayer)
@@ -73,7 +73,32 @@ playerForm defPlayer extra = do
                  <*> shieldSkillRes
   return (result, widget)
 
+combatForm :: MForm Handler (FormResult [Monster], [FieldView App])
+combatForm = do
+  monsterField <- lift $ selectDataField CrawlData.monsters
+  l <- sequence $ replicate 5 $ mreq monsterField "ignored" Nothing
+  let (monsters, views) = unzip l
+  return (sequenceA monsters, views)
+
+crawlForm :: Player -> Form Player
+crawlForm player extra = do
+  (player', playerWidget) <- playerForm player
+  (_, monsterViews) <- combatForm
+  let widget = [whamlet|
+^{extra}
+^{playerWidget}
+<section>
+  <.section_container>
+    <.section_header>Combat Outcomes
+    <.section_body>
+      <table>
+        $forall monsterView <- monsterViews
+          <tr>
+            <td>^{fvInput monsterView}
+|]
+  return (player', widget)
+
 getCrawlR :: Handler Html
 getCrawlR = do
-  ((res, characterWidget), enctype) <- runFormGet $ playerForm def
+  ((res, characterWidget), enctype) <- runFormGet $ crawlForm def
   defaultLayout $(widgetFile "crawl")
