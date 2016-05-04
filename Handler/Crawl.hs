@@ -1,25 +1,19 @@
 {-# OPTIONS_GHC -fno-warn-unused-binds -fno-warn-name-shadowing -fno-warn-unused-matches #-}
+{-# LANGUAGE RankNTypes #-}
 
 module Handler.Crawl where
 
-import Import
+import Import hiding ((<.>))
 
-import Crawl.Stats.Player (Player(Player))
-import qualified Crawl.Stats.Player as Player
+import Crawl.Stats.Lens.Player (Player)
+import qualified Crawl.Stats.Lens.Player as Player
 import Crawl.Stats.Monster (Monster)
 import Crawl.Stats.Data (CrawlData)
 import qualified Crawl.Stats.Data as CrawlData
 import Crawl.Stats.Named (Named)
 import qualified Crawl.Stats.Named as Named
 import qualified Data.Text as Text
-
-renderField :: FieldView App -> Widget
-renderField f = [whamlet|
-<tr>
-  <td>
-    <label for=#{fvId f}>#{fvLabel f}
-  <td>^{fvInput f}
-|]
+import Control.Lens hiding (lensField, (<.>))
 
 boundedSettings :: Int -> Int -> FieldSettings m -> FieldSettings m
 boundedSettings min max fs = fs {fsAttrs = [("min", Text.pack $ show min), ("max", Text.pack $ show max)] ++ fsAttrs fs}
@@ -30,47 +24,67 @@ selectDataField f = do
   let namedList = f $ crawlData app
   return $ selectFieldList [(Text.pack $ Named.name x, x) | x <- namedList]
 
+lensField :: Lens' d a -> d -> (Maybe a -> AForm Handler a) -> AForm Handler (d -> d)
+lensField lens defInst field = set lens <$> field (Just $ defInst ^.lens)
+
+infixl 4 <.>
+
+(<.>) :: Applicative f => f (a -> b) -> f (b -> c) -> f (a -> c)
+(<.>) = liftA2 $ flip (.)
+
+basicsForm :: Player -> PartialForm (Player -> Player)
+basicsForm p = (flip renderTable) mempty $
+  (lensField Player.hp p $ areq intField (boundedSettings 1 999 "HP"))
+  <.> (lensField Player.ev p $ areq intField (boundedSettings 1 999 "EV"))
+  <.> (lensField Player.str p $ areq intField (boundedSettings 1 999 "Str"))
+  <.> (lensField Player.int p $ areq intField (boundedSettings 1 999 "Int"))
+  <.> (lensField Player.dex p $ areq intField (boundedSettings 1 999 "Dex"))
+
+skillsForm :: Player -> PartialForm (Player -> Player)
+skillsForm p = (flip renderTable) mempty $
+  (lensField Player.fightingSkill p $ areq intField (boundedSettings 0 27 "Fighting"))
+  <.> (lensField Player.macesSkill p $ areq intField (boundedSettings 0 27 "Maces & Flails"))
+  <.> (lensField Player.armourSkill p $ areq intField (boundedSettings 0 27 "Armour"))
+  <.> (lensField Player.shieldSkill p $ areq intField (boundedSettings 0 27 "Shields"))
+
+equipmentForm :: Player -> PartialForm (Player -> Player)
+equipmentForm p = do
+  bodyArmourField <- lift $ selectDataField CrawlData.armour
+  weaponField <- lift $ selectDataField CrawlData.weapons
+  shieldField <- lift $ selectDataField CrawlData.shields
+  (flip renderTable) mempty $
+    (lensField Player.weapon p $ areq weaponField "Weapon")
+    <.> (lensField Player.armour p $ areq bodyArmourField "Armour")
+    <.> (lensField Player.shield p $ areq shieldField "Shield")
+
 playerForm :: Player -> PartialForm Player
 playerForm defPlayer = do
-  -- Basics
-  (hpRes, hpView) <- mreq intField (boundedSettings 1 999 "HP") (Just $ Player.hp defPlayer)
-  (evRes, evView) <- mreq intField (boundedSettings 1 999 "EV") (Just $ Player.ev defPlayer)
-  (strRes, strView) <- mreq intField (boundedSettings 1 999 "Str") (Just $ Player.str defPlayer)
-  (intRes, intView) <- mreq intField (boundedSettings 1 999 "Int") (Just $ Player.int defPlayer)
-  (dexRes, dexView) <- mreq intField (boundedSettings 1 999 "Dex") (Just $ Player.dex defPlayer)
-  let basicFields = [hpView, evView, strView, intView, dexView]
+  (basicsRes, basicsView) <- basicsForm defPlayer
+  (skillsRes, skillsView) <- skillsForm defPlayer
+  (equipRes, equipView) <- equipmentForm defPlayer
 
-  -- Skills
-  (fightingSkillRes, fightingSkillView) <- mreq intField (boundedSettings 0 27 "Fighting") (Just $ Player.fightingSkill defPlayer)
-  (macesSkillRes, macesSkillView) <- mreq intField (boundedSettings 0 27 "Maces & Flails") (Just $ Player.macesSkill defPlayer)
-  (armourSkillRes, armourSkillView) <- mreq intField (boundedSettings 0 27 "Armour") (Just $ Player.armourSkill defPlayer)
-  (shieldSkillRes, shieldSkillView) <- mreq intField (boundedSettings 0 27 "Shields") (Just $ Player.shieldSkill defPlayer)
-
-  let skillFields = [fightingSkillView, macesSkillView, armourSkillView, shieldSkillView]
-
-  -- Equipment
-  bodyArmourField <- lift $ selectDataField CrawlData.armour
-  (bodyArmourRes, bodyArmourView) <- mreq bodyArmourField "Body Armour" (Just $ Player.armour defPlayer)
-  weaponField <- lift $ selectDataField CrawlData.weapons
-  (weaponRes, weaponView) <- mreq weaponField "Weapon" (Just $ Player.weapon defPlayer)
-  shieldField <- lift $ selectDataField CrawlData.shields
-  (shieldRes, shieldView) <- mreq shieldField "Shield" (Just $ Player.shield defPlayer)
-  let equipmentFields = [bodyArmourView, weaponView, shieldView]
-
-  let widget = $(widgetFile "playerForm")
-  let result = Player
-                 <$> hpRes
-                 <*> evRes
-                 <*> strRes
-                 <*> intRes
-                 <*> dexRes
-                 <*> weaponRes
-                 <*> bodyArmourRes
-                 <*> shieldRes
-                 <*> fightingSkillRes
-                 <*> macesSkillRes
-                 <*> armourSkillRes
-                 <*> shieldSkillRes
+  let widget = [whamlet|
+<section>
+  <.section_container>
+    <.section_header>Character
+    <.section_body>
+      <.subsection>
+        <.subsection_header>Basics
+        <.subsection_body>
+          <table>
+            ^{basicsView}
+      <.subsection>
+        <.subsection_header>Skills
+        <.subsection_body>
+          <table>
+            ^{skillsView}
+      <.subsection>
+        <.subsection_header>Equipment
+        <.subsection_body>
+          <table>
+            ^{equipView}
+|]
+  let result = basicsRes <.> skillsRes <.> equipRes <*> pure def
   return (result, widget)
 
 combatForm :: MForm Handler (FormResult [Monster], [FieldView App])

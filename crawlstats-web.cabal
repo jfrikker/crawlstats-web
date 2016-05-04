@@ -79,6 +79,7 @@ library
                  , case-insensitive
                  , wai
                  , blaze-markup
+                 , lens
                  , crawlstats
 
 executable         crawlstats-web
