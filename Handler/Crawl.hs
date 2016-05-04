@@ -4,9 +4,6 @@
 module Handler.Crawl where
 
 import Import
-import Yesod.Form.Bootstrap3 (BootstrapFormLayout (..), renderBootstrap3,
-                              withSmallInput)
-import Text.Julius (RawJS (..))
 
 import Crawl.Stats.Player (Player (Player))
 import qualified Crawl.Stats.Player as Player
@@ -19,25 +16,12 @@ import qualified Data.Text as Text
 renderField :: FieldView App -> Widget
 renderField f = [whamlet|
 <tr>
-  <td>#{fvLabel f}
+  <td>
+    <label for=#{fvId f}>#{fvLabel f}
   <td>^{fvInput f}
 |]
 
-
- -- hp :: Integer,
- -- ev :: Integer,
- -- str :: Integer,
- -- int :: Integer,
- -- dex :: Integer,
- -- weapon :: Weapon,
- -- armour :: Armour,
- -- shield :: Shield,
- -- fightingSkill :: Integer,
- -- macesSkill :: Integer,
- -- armourSkill :: Integer,
- -- shieldSkill :: Integer
-
-boundedSettings :: (Show i, Num i) => i -> i -> FieldSettings m -> FieldSettings m
+boundedSettings :: Int -> Int -> FieldSettings m -> FieldSettings m
 boundedSettings min max fs = fs {fsAttrs = [("min", Text.pack $ show min), ("max", Text.pack $ show max)] ++ fsAttrs fs}
 
 selectDataField :: (Named a, Eq a, RenderMessage App Text) => (CrawlData -> [a]) -> Handler (Field Handler a)
@@ -46,36 +30,37 @@ selectDataField f = do
   let namedList = f $ crawlData app
   return $ selectFieldList [(Text.pack $ Named.name x, x) | x <- namedList]
 
-playerForm :: Form Player
-playerForm extra = do
+playerForm :: Player -> Form Player
+playerForm defPlayer extra = do
   -- Basics
-  (hpRes, hpView) <- mreq intField (boundedSettings 1 999 "HP") (Just 1)
-  (strRes, strView) <- mreq intField (boundedSettings 1 999 "Str") (Just 1)
-  (intRes, intView) <- mreq intField (boundedSettings 1 999 "Int") (Just 1)
-  (dexRes, dexView) <- mreq intField (boundedSettings 1 999 "Dex") (Just 1)
-  let basicFields = [hpView, strView, intView, dexView]
+  (hpRes, hpView) <- mreq intField (boundedSettings 1 999 "HP") (Just $ Player.hp defPlayer)
+  (evRes, evView) <- mreq intField (boundedSettings 1 999 "EV") (Just $ Player.ev defPlayer)
+  (strRes, strView) <- mreq intField (boundedSettings 1 999 "Str") (Just $ Player.str defPlayer)
+  (intRes, intView) <- mreq intField (boundedSettings 1 999 "Int") (Just $ Player.int defPlayer)
+  (dexRes, dexView) <- mreq intField (boundedSettings 1 999 "Dex") (Just $ Player.dex defPlayer)
+  let basicFields = [hpView, evView, strView, intView, dexView]
 
   -- Skills
-  (fightingSkillRes, fightingSkillView) <- mreq intField (boundedSettings 0 27 "Fighting") (Just 0)
-  (macesSkillRes, macesSkillView) <- mreq intField (boundedSettings 0 27 "Maces & Flails") (Just 0)
-  (armourSkillRes, armourSkillView) <- mreq intField (boundedSettings 0 27 "Armour") (Just 0)
-  (shieldSkillRes, shieldSkillView) <- mreq intField (boundedSettings 0 27 "Shields") (Just 0)
+  (fightingSkillRes, fightingSkillView) <- mreq intField (boundedSettings 0 27 "Fighting") (Just $ Player.fightingSkill defPlayer)
+  (macesSkillRes, macesSkillView) <- mreq intField (boundedSettings 0 27 "Maces & Flails") (Just $ Player.macesSkill defPlayer)
+  (armourSkillRes, armourSkillView) <- mreq intField (boundedSettings 0 27 "Armour") (Just $ Player.armourSkill defPlayer)
+  (shieldSkillRes, shieldSkillView) <- mreq intField (boundedSettings 0 27 "Shields") (Just $ Player.shieldSkill defPlayer)
 
   let skillFields = [fightingSkillView, macesSkillView, armourSkillView, shieldSkillView]
 
   -- Equipment
   bodyArmourField <- lift $ selectDataField CrawlData.armour
-  (bodyArmourRes, bodyArmourView) <- mreq bodyArmourField "Body Armour" Nothing
+  (bodyArmourRes, bodyArmourView) <- mreq bodyArmourField "Body Armour" (Just $ Player.armour defPlayer)
   weaponField <- lift $ selectDataField CrawlData.weapons
-  (weaponRes, weaponView) <- mreq weaponField "Weapon" Nothing
+  (weaponRes, weaponView) <- mreq weaponField "Weapon" (Just $ Player.weapon defPlayer)
   shieldField <- lift $ selectDataField CrawlData.shields
-  (shieldRes, shieldView) <- mreq shieldField "Shield" Nothing
+  (shieldRes, shieldView) <- mreq shieldField "Shield" (Just $ Player.shield defPlayer)
   let equipmentFields = [bodyArmourView, weaponView, shieldView]
 
   let widget = $(widgetFile "playerForm")
   let result = Player
                  <$> hpRes
-                 <*> pure 1
+                 <*> evRes
                  <*> strRes
                  <*> intRes
                  <*> dexRes
@@ -90,5 +75,5 @@ playerForm extra = do
 
 getCrawlR :: Handler Html
 getCrawlR = do
-  ((res, characterWidget), enctype) <- runFormGet playerForm
+  ((res, characterWidget), enctype) <- runFormGet $ playerForm def
   defaultLayout $(widgetFile "crawl")

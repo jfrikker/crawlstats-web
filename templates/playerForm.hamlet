@@ -1,39 +1,22 @@
 <section>
-  <.section_header>Character
-  <.section_body>
-    <.subsection>
-      <.subsection_header>Basics
-      <.subsection_body>
-        <table>
-          $forall field <- basicFields
-            ^{renderField field}
-    <.subsection>
-      <.subsection_header>Skills
-      <.subsection_body>
-        <table>
-          $forall field <- skillFields
-            ^{renderField field}
-    <.subsection>
-      <.subsection_header>Equipment
-      <.subsection_body>
-        <table>
-          $forall field <- equipmentFields
-            ^{renderField field}
-    <!--div class="subsection">
-      <div class="subsection_header">Equipment</div>
-      <div class="subsection_body">
-        <table>
-          <tr><td><label for="bodyArmour">Body Armour</label></td><td><select id="bodyArmour" name="bodyArmour">
-                <option value="Plate">Plate</option>
-            </select></td></tr>
-        </table>
-      </div>
-    </div>
-  </div>
-</div>
-<div>
-  <div class="section">
-    <div class="section_header">Combat Outcomes</div>
-    <div class="section_body">
-    </div>
-  </div-->
+  <.section_container>
+    <.section_header>Character
+    <.section_body>
+      <.subsection>
+        <.subsection_header>Basics
+        <.subsection_body>
+          <table>
+            $forall field <- basicFields
+              ^{renderField field}
+      <.subsection>
+        <.subsection_header>Skills
+        <.subsection_body>
+          <table>
+            $forall field <- skillFields
+              ^{renderField field}
+      <.subsection>
+        <.subsection_header>Equipment
+        <.subsection_body>
+          <table>
+            $forall field <- equipmentFields
+              ^{renderField field}
