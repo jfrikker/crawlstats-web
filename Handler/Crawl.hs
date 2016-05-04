@@ -18,10 +18,10 @@ import Control.Lens hiding (lensField, (<.>))
 boundedSettings :: Int -> Int -> FieldSettings m -> FieldSettings m
 boundedSettings min max fs = fs {fsAttrs = [("min", Text.pack $ show min), ("max", Text.pack $ show max)] ++ fsAttrs fs}
 
-selectDataField :: (Named a, Eq a, RenderMessage App Text) => (CrawlData -> [a]) -> Handler (Field Handler a)
-selectDataField f = do
+selectDataField :: (CrawlData.Loaded a, Eq a, RenderMessage App Text) => Handler (Field Handler a)
+selectDataField = do
   app <- getYesod
-  let namedList = f $ crawlData app
+  let namedList = CrawlData.list $ crawlData app
   return $ selectFieldList [(Text.pack $ Named.name x, x) | x <- namedList]
 
 lensField :: Lens' d a -> d -> (Maybe a -> AForm Handler a) -> AForm Handler (d -> d)
@@ -49,9 +49,9 @@ skillsForm p = (flip renderTable) mempty $
 
 equipmentForm :: Player -> PartialForm (Player -> Player)
 equipmentForm p = do
-  bodyArmourField <- lift $ selectDataField CrawlData.armour
-  weaponField <- lift $ selectDataField CrawlData.weapons
-  shieldField <- lift $ selectDataField CrawlData.shields
+  bodyArmourField <- lift $ selectDataField
+  weaponField <- lift $ selectDataField
+  shieldField <- lift $ selectDataField
   (flip renderTable) mempty $
     (lensField Player.weapon p $ areq weaponField "Weapon")
     <.> (lensField Player.armour p $ areq bodyArmourField "Armour")
@@ -89,7 +89,7 @@ playerForm defPlayer = do
 
 combatForm :: MForm Handler (FormResult [Monster], [FieldView App])
 combatForm = do
-  monsterField <- lift $ selectDataField CrawlData.monsters
+  monsterField <- lift $ selectDataField
   l <- sequence $ replicate 5 $ mreq monsterField "ignored" Nothing
   let (monsters, views) = unzip l
   return (sequenceA monsters, views)
