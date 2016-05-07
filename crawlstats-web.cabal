@@ -80,6 +80,8 @@ library
                  , wai
                  , blaze-markup
                  , lens
+                 , probability
+                 , yesod-table
                  , crawlstats
 
 executable         crawlstats-web

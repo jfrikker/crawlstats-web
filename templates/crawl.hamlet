@@ -1,1 +1,3 @@
-^{characterWidget}
+<form method=post action=@{CrawlR} enctype=#{crawlEnctype}>
+  ^{crawlWidget}
+  <button>Submit
